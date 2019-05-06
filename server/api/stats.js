@@ -3,6 +3,8 @@ const { GodPlayerStats, God, GodInfo } = require('../../db');
 const godStats = require('../util/godStats');
 const defaultStats = Object.keys(require('../util/defaultPlayerGodStats'));
 
+const retrieveCache = require('./redisHelper');
+
 router.get('/', async(req, res, next) => {
     try {
         res.send(defaultStats.slice(0, -3));
@@ -13,7 +15,8 @@ router.get('/', async(req, res, next) => {
 
 router.get('/all', async(req, res, next) => {
     try {
-        let stats = await godStats.getStats(null, defaultStats, req.query);
+        let stats = await retrieveCache(req.originalUrl, godStats.getStats(null, defaultStats, req.query));
+//        let stats = await godStats.getStats(null, defaultStats, req.query);
         let maxStats = defaultStats.reduce((obj, stat) => {
             let max = Math.max(...stats.map(god => god[stat] || 0));
             obj[stat] = max;
@@ -27,15 +30,13 @@ router.get('/all', async(req, res, next) => {
 
 router.get('/:statName', async(req, res, next) => {
     try {
-        let stats;
         if(req.params.statName.toUpperCase() === 'KDA'){
-            stats = await godStats.getKDA(null, req.query);
+            res.send( await retrieveCache(req.originalUrl, godStats.getKDA(null, req.query)) );
         } else if(req.params.statName.toUpperCase() === 'GAMES'){
-            stats = await godStats.getGames(null, req.query);
+            res.send( await retrieveCache(req.originalUrl, godStats.getGames(null, req.query)) );
         } else {
-            stats = await godStats.getStats(null, [req.params.statName], req.query);
+            res.send( await retrieveCache(req.originalUrl, godStats.getStats(null, [req.params.statName], req.query)) );
         }
-        res.send(stats);
     } catch(err){
         next(err);
     }
